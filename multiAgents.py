@@ -164,7 +164,8 @@ class MinimaxAgent(MultiAgentSearchAgent):
     Your minimax agent (question 2)
     """
 
-    def getAction(self, game_state):
+    def getAction(self, gameState):
+
         """
         Returns the minimax action from the current gameState using self.depth
         and self.evaluationFunction.
@@ -188,19 +189,113 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        agentIndex = self.index
+
+        actionValue = {}
+
+        legalActions = gameState.getLegalActions(agentIndex)
+        for action in legalActions:
+            succesorGameState = gameState.generateSuccessor(agentIndex, action)
+            value = self.value(succesorGameState, agentIndex + 1, 0)
+            actionValue[action] = value
+
+        maxValue = max(actionValue.values())
+        for action, value in actionValue.items():
+            if value == maxValue:
+                return action
+
+    def value(self, state, agent, layer):
+        # Si ha pasado por todos los agentes:
+        if agent == state.getNumAgents():
+            agent = 0
+            layer += 1
+        if self.isTerminal(state, layer): return self.evaluationFunction(state)
+        if agent == 0:
+            return self.maxValue(state, layer)
+        else:
+            return self.minValue(state, agent, layer)
+
+    def maxValue(self, state, layer):
+        v = -sys.maxsize
+        legalActions = state.getLegalActions(self.index)
+        for action in legalActions:
+            succesorGameState = state.generateSuccessor(self.index, action)
+            v = max(v, self.value(succesorGameState, 1, layer))
+        return v
+
+    def minValue(self, state, agent, layer):
+        v = sys.maxsize
+        legalActions = state.getLegalActions(agent)
+        for action in legalActions:
+            succesorGameState = state.generateSuccessor(agent, action)
+            v = min(v, self.value(succesorGameState, agent + 1, layer))
+        return v
+
+    def isTerminal(self, state, layer):
+        return state.isWin() or state.isLose() or layer == self.depth
+
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
     Your minimax agent with alpha-beta pruning (question 3)
     """
 
-    def getAction(self, game_state):
+    def getAction(self, gameState):
         """
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        agentIndex = self.index
+
+        actionValue = {}
+
+        #v = -sys.maxsize
+        alfa = -sys.maxsize
+        beta = sys.maxsize
+
+        legalActions = gameState.getLegalActions(agentIndex)
+        for i, action in enumerate(legalActions):
+            succesorGameState = gameState.generateSuccessor(agentIndex, action)
+            value = self.value(succesorGameState, agentIndex + 1, 0, -sys.maxsize, sys.maxsize, i)
+            actionValue[action] = value
+
+        maxValue = max(actionValue.values())
+        for action, value in actionValue.items():
+            if value == maxValue:
+                return action
+
+    def value(self, state, agent, layer, alfa, beta, ac):
+        # Si ha pasado por todos los agentes:
+        if agent == state.getNumAgents():
+            agent = 0
+            layer += 1
+        if self.isTerminal(state, layer): return self.evaluationFunction(state)
+        if agent == 0: return self.maxValue(state, layer, alfa, beta, ac)
+        else: return self.minValue(state, agent, layer, alfa, beta, ac)
+
+    def maxValue(self, state, layer, alfa, beta, ac):
+        v = -sys.maxsize
+        legalActions = state.getLegalActions(self.index)
+        for action in legalActions:
+            succesorGameState = state.generateSuccessor(self.index, action)
+            v = max(v, self.value(succesorGameState, 1, layer, alfa, beta, ac))
+            if v >= beta: return v
+            alfa = max(alfa, v)
+        return v
+
+    def minValue(self, state, agent, layer, alfa, beta, ac):
+        v = sys.maxsize
+        legalActions = state.getLegalActions(agent)
+        for action in legalActions:
+            succesorGameState = state.generateSuccessor(agent, action)
+            v = min(v, self.value(succesorGameState, agent + 1, layer, alfa, beta, ac))
+            if agent == 1 and ac!=0:
+                if v <= alfa: return v
+            beta = min(beta, v)
+        return v
+
+    def isTerminal(self, state, layer):
+        return state.isWin() or state.isLose() or layer == self.depth
 
 
 

@@ -101,27 +101,17 @@ class ReflexAgent(Agent):
                     abs(newPos[0] - fantasma.configuration.pos[0]) + abs(newPos[1] - fantasma.configuration.pos[1]))
 
         # SACAR EL MÍNIMO DE CADA UNO (EL MÁS CERCANO)
-        if len(dF) != 0:
-            distFan = min(dF)
-        else:
-            distFan = sys.maxsize
+        if len(dF) != 0: distFan = min(dF)
+        else: distFan = sys.maxsize
 
-        if len(dC) == 0:
-            distCom = 0
-        else:
-            distCom = min(dC)
+        if len(dC) == 0: distCom = 0
+        else: distCom = min(dC)
 
         # CONDICIONES
-        if distCom == 0:
-            ema = sys.maxsize
-        elif distFan == 0:
-            ema = -sys.maxsize
-        elif distCom == distFan:
-            ema = -1 / distFan
-        elif distCom < distFan:
-            ema = 1 / distCom
-        else:
-            ema = -distCom
+        if distCom == 0: ema = sys.maxsize
+        elif distFan == 0: ema = -sys.maxsize
+        elif distCom >= distFan: ema = -1 / distFan
+        else: ema = 1 / distCom
 
         return ema + score
 
@@ -298,7 +288,6 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         return state.isWin() or state.isLose() or layer == self.depth
 
 
-
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
       Your expectimax agent (question 4)
@@ -311,8 +300,53 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         All ghosts should be modeled as choosing uniformly at random from their
         legal moves.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        "*** YOUR CODE FROM HERE ***"
+        agentIndex = self.index
+
+        actionValue = {}
+
+        legalActions = gameState.getLegalActions(agentIndex)
+        for action in legalActions:
+            succesorGameState = gameState.generateSuccessor(agentIndex, action)
+            value = self.value(succesorGameState, agentIndex + 1, 0)
+            actionValue[action] = value
+
+        maxValue = max(actionValue.values())
+        for action, value in actionValue.items():
+            if value == maxValue:
+                return action
+
+    def value(self, state, agent, layer):
+        # Si ha pasado por todos los agentes:
+        if agent == state.getNumAgents():
+            agent = 0
+            layer += 1
+        if self.isTerminal(state, layer): return self.evaluationFunction(state)
+        if agent == 0:
+            return self.maxValue(state, layer)
+        else:
+            return self.exp(state, agent, layer)
+
+    def maxValue(self, state, layer):
+        v = -sys.maxsize
+        legalActions = state.getLegalActions(self.index)
+        for action in legalActions:
+            succesorGameState = state.generateSuccessor(self.index, action)
+            v = max(v, self.value(succesorGameState, 1, layer))
+        return v
+
+    def exp(self, state, agent, layer):
+        v = 0
+        legalActions = state.getLegalActions(agent)
+        p = 1 / len(legalActions)
+        for action in legalActions:
+            succesorGameState = state.generateSuccessor(agent, action)
+            v += p * self.value(succesorGameState, agent + 1, layer)
+        return v
+
+    def isTerminal(self, state, layer):
+        return state.isWin() or state.isLose() or layer == self.depth
+        "*** YOUR CODE TO HERE ***"
 
 
 def betterEvaluationFunction(currentGameState):
@@ -322,13 +356,50 @@ def betterEvaluationFunction(currentGameState):
 
     DESCRIPTION: <write something here so we know what you did>
     """
-    pacman_pos = currentGameState.getPacmanPosition()
-    newFood = currentGameState.getFood()
-    newGhostStates = currentGameState.getGhostStates()
-    newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
-
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    ghostStates = currentGameState.getGhostStates()
+    pos = currentGameState.getPacmanPosition()
+    food = currentGameState.getFood()
+    scaredTimes = [ghostState.scaredTimer for ghostState in ghostStates]
+
+    # INICIALIZAR LISTAS
+    dF = []
+    dC = []
+    por_comer = []
+    score = currentGameState.getScore()
+
+    # A�ADIR COMIDAS Y C�PSULAS
+    for x, fila in enumerate(food):
+        for y, comida in enumerate(fila):
+            if comida:
+                por_comer.append((x, y))
+    for capsule in currentGameState.getCapsules():
+        por_comer.append(capsule)
+
+    for comida in por_comer:
+        dC.append(abs(pos[0] - comida[0]) + abs(pos[1] - comida[1]))
+
+    # A�ADIR FANTASMAS
+    for i, fantasma in enumerate(ghostStates):
+        if scaredTimes[i] == 0:
+            dF.append(abs(pos[0] - fantasma.configuration.pos[0]) + abs(pos[1] - fantasma.configuration.pos[1]))
+        else:  # En caso de que el fantasma est� huyendo se considera comida
+            dC.append(abs(pos[0] - fantasma.configuration.pos[0]) + abs(pos[1] - fantasma.configuration.pos[1]))
+
+    # SACAR EL M�NIMO DE CADA UNO (EL M�S CERCANO)
+    if len(dF) != 0: distFan = min(dF)
+    else: distFan = sys.maxsize
+
+    if len(dC) == 0: distCom = 0
+    else: distCom = min(dC)
+
+    # CONDICIONES
+    if distCom == 0: ema = sys.maxsize
+    elif distFan == 0: ema = -sys.maxsize
+    elif distCom >= distFan: ema = -1 / distFan
+    else: ema = 1 / distCom
+
+    return ema + score
 
 
 # Abbreviation
